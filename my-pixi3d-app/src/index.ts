@@ -17,6 +17,7 @@ import {
   Point3D
 } from "pixi3d/pixi7"
 import { Keyboard } from "./Keyboard";
+import { playSFX, stopSFX } from "./utils/SoundParams";
 
 let app = new Application({
   backgroundColor: 0xdddddd, resizeTo: window, antialias: true
@@ -119,6 +120,11 @@ const manifest = {
         name: "firstperson",
         srcs: "assets/person/firstperson/firstperson.gltf",
       },
+
+      {
+        name: "running",
+        srcs: "assets/sounds/run.mp3",
+      },
     ],
   }]
 }
@@ -177,7 +183,7 @@ pipeline.enableShadows(road, shadowCastingLight)
 pipeline.enableShadows(model, shadowCastingLight)
 
 // Configura velocidades para el movimiento de la cámara
-const cameraMoveSpeed = 0.1;
+const cameraMoveSpeed = 0.2;
 const vehiculeSpeed = 0.1;
 const cameraRotationSpeed = 0.01;
 
@@ -202,10 +208,15 @@ app.ticker.add(() => {
 
   firstperson.position.set(cameraControl.target.x, cameraControl.target.y, cameraControl.target.z)
   firstperson.rotationQuaternion.setEulerAngles(cameraControl.angles.x, cameraControl.angles.y, 0)
+  const handMovementAmplitude = 0.05; // Ajusta la amplitud del movimiento de las manos
+  const handMovementFrequency = 0.005; // Ajusta la frecuencia del movimiento de las manos
 
   if (Keyboard.state.get("KeyW") || Keyboard.state.get("KeyS") || Keyboard.state.get("KeyA") || Keyboard.state.get("KeyD")) {
     const angleYRad = cameraControl.angles.y * (Math.PI / 180); // Convert degrees to radians
     const angleXRad = cameraControl.angles.x * (Math.PI / 180); // Convert degrees to radians
+    playSFX("running", { loop: true, volume: 0.05 })
+    // Simular movimiento de manos mientras corres
+    firstperson.position.y = cameraControl.target.y + Math.cos(performance.now() * handMovementFrequency) * handMovementAmplitude;
 
     const moveZ = cameraMoveSpeed * Math.cos(angleYRad);
     const moveX = cameraMoveSpeed * Math.sin(angleYRad);
@@ -232,6 +243,8 @@ app.ticker.add(() => {
       cameraControl.target.z += moveX; // Mueve el objetivo hacia la derecha
       cameraControl.target.x -= moveZ; // Mueve el objetivo hacia la derecha
     }
+  } else {
+    stopSFX("running");
   }
 
   if (Keyboard.state.get("Space")) {
