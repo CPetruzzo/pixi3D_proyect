@@ -1,14 +1,28 @@
 /// <reference path='../global.d.ts' />
 
-import { Application, Assets, Color, Renderer, Resource, Sprite, Texture } from "pixi.js"
-import { CameraOrbitControl, LightingEnvironment, ImageBasedLighting, Model, Mesh3D, Light, LightType, ShadowCastingLight, ShadowQuality, Sprite3D, SpriteBillboardType, Vec3, Camera, Point3D, Fog } from "pixi3d/pixi7"
+import { Application, Assets, Renderer, Resource, Sprite, Texture } from "pixi.js"
+import {
+  CameraOrbitControl,
+  LightingEnvironment,
+  ImageBasedLighting,
+  Model,
+  Light,
+  LightType,
+  ShadowCastingLight,
+  ShadowQuality,
+  Sprite3D,
+  SpriteBillboardType,
+  Vec3,
+  Camera,
+  Point3D
+} from "pixi3d/pixi7"
 import { Keyboard } from "./Keyboard";
 
 let app = new Application({
   backgroundColor: 0xdddddd, resizeTo: window, antialias: true
 })
 document.body.appendChild(app.view as HTMLCanvasElement)
-Keyboard.initialize(); /* lo llamo una vez y nunca mas */
+Keyboard.initialize();
 
 export class Pocho extends Sprite3D {
   speedX: number;
@@ -97,6 +111,14 @@ const manifest = {
         name: "road",
         srcs: "assets/road/road.gltf",
       },
+      {
+        name: "hauntedhouse",
+        srcs: "assets/hauntedhouse/hauntedhouse.gltf",
+      },
+      {
+        name: "firstperson",
+        srcs: "assets/person/firstperson/firstperson.gltf",
+      },
     ],
   }]
 }
@@ -106,28 +128,34 @@ let assets = await Assets.loadBundle("assets")
 
 let model = app.stage.addChild(Model.from(assets.impala))
 model.y = +1
-model.scale.set(30,30,30)
+model.scale.set(30, 30, 30)
 
 let road = app.stage.addChild(Model.from(assets.road))
 // road.y = +0.5
 // road.scale.set(1,1,10)
 
+let hauntedhouse = app.stage.addChild(Model.from(assets.hauntedhouse))
+hauntedhouse.x = 50
+
+let firstperson = app.stage.addChild(Model.from(assets.firstperson))
+firstperson.scale.set(0.03, 0.03, 0.03)
 
 const pocho: Pocho[] = [];
-// for (let i = 0; i < 500; i++) {
-//   pocho.push(app.stage.addChild(new Pocho(Texture.from(manifest.bundles[0].assets[3].srcs), 150, new Point3D(1,1,1))));
-// }
-for (let i = 0; i < 100; i++) {
-  pocho.push(app.stage.addChild(new Pocho(Texture.from(manifest.bundles[0].assets[4].srcs), 50)));
+for (let i = 0; i < 500; i++) {
+  pocho.push(app.stage.addChild(new Pocho(Texture.from(manifest.bundles[0].assets[3].srcs), 150, new Point3D(1, 1, 1))));
 }
+// for (let i = 0; i < 100; i++) {
+//   pocho.push(app.stage.addChild(new Pocho(Texture.from(manifest.bundles[0].assets[4].srcs), 50)));
+// }
 
 // So the sprites can be sorted using z-index.
 app.stage.sortableChildren = true;
 
-let ground = app.stage.addChild(Mesh3D.createPlane())
-ground.y = -0.8
-ground.scale.set(100, 1, 100)
+// let ground = app.stage.addChild(Mesh3D.createPlane())
+// ground.y = -0.8
+// ground.scale.set(100, 1, 100)
 
+let myAngle: number;
 LightingEnvironment.main.imageBasedLighting = new ImageBasedLighting(
   assets.diffuse,
   assets.specular
@@ -145,11 +173,12 @@ shadowCastingLight.softness = 1
 shadowCastingLight.shadowArea = 15
 
 let pipeline = app.renderer.plugins.pipeline
-pipeline.enableShadows(ground, shadowCastingLight)
+pipeline.enableShadows(road, shadowCastingLight)
 pipeline.enableShadows(model, shadowCastingLight)
 
 // Configura velocidades para el movimiento de la cámara
 const cameraMoveSpeed = 0.1;
+const vehiculeSpeed = 0.1;
 const cameraRotationSpeed = 0.01;
 
 // Crea una instancia del CameraOrbitControl y pásale la cámara y el canvas
@@ -159,10 +188,6 @@ let vignette = app.stage.addChild(
     "https://raw.githubusercontent.com/jnsmalm/pixi3d-sandbox/master/assets/vignette.png"
   )
 );
-
-// const color = new Color();
-// const niebla = new Fog(undefined, undefined, undefined);
-// app.stage.addChild(niebla)
 
 app.ticker.add(() => {
   Object.assign(vignette, {
@@ -174,26 +199,41 @@ app.ticker.add(() => {
     // This will render the bunnies from back to front.
     eachpocho.zIndex = -eachpocho.distanceFromCamera();
   }
-  // // cameraControl.updateCamera();
-  //   // Calcula el vector de dirección de la cámara
-  //   const cameraDirection = Vec3.set(0, 0, -1);
-  //   cameraDirection.applyEuler(cameraControl.angles.x, cameraControl.angles.y, 0);
 
-  //   // Normaliza el vector para asegurarte de que tiene longitud 1
-  //   cameraDirection.normalize();
+  firstperson.position.set(cameraControl.target.x, cameraControl.target.y, cameraControl.target.z)
+  firstperson.rotationQuaternion.setEulerAngles(cameraControl.angles.x, cameraControl.angles.y, 0)
 
-  if (Keyboard.state.get("KeyW")) {
-    cameraControl.target.z -= cameraMoveSpeed; // Mueve el objetivo hacia arriba
+  if (Keyboard.state.get("KeyW") || Keyboard.state.get("KeyS") || Keyboard.state.get("KeyA") || Keyboard.state.get("KeyD")) {
+    const angleYRad = cameraControl.angles.y * (Math.PI / 180); // Convert degrees to radians
+    const angleXRad = cameraControl.angles.x * (Math.PI / 180); // Convert degrees to radians
+
+    const moveZ = cameraMoveSpeed * Math.cos(angleYRad);
+    const moveX = cameraMoveSpeed * Math.sin(angleYRad);
+    const moveY = cameraMoveSpeed * Math.sin(angleXRad);
+
+    if (Keyboard.state.get("KeyW")) {
+      cameraControl.target.z += moveZ; // Mueve el objetivo hacia adelante
+      cameraControl.target.x += moveX; // Mueve el objetivo hacia adelante
+      cameraControl.target.y -= moveY; // Mueve el objetivo hacia arriba
+    }
+
+    if (Keyboard.state.get("KeyS")) {
+      cameraControl.target.z -= moveZ; // Mueve el objetivo hacia atrás
+      cameraControl.target.x -= moveX; // Mueve el objetivo hacia atrás
+      cameraControl.target.y += moveY; // Mueve el objetivo hacia abajo
+    }
+
+    if (Keyboard.state.get("KeyA")) {
+      cameraControl.target.z -= moveX; // Mueve el objetivo hacia la izquierda
+      cameraControl.target.x += moveZ; // Mueve el objetivo hacia la izquierda
+    }
+
+    if (Keyboard.state.get("KeyD")) {
+      cameraControl.target.z += moveX; // Mueve el objetivo hacia la derecha
+      cameraControl.target.x -= moveZ; // Mueve el objetivo hacia la derecha
+    }
   }
-  if (Keyboard.state.get("KeyA")) {
-    cameraControl.target.x -= cameraMoveSpeed; // Mueve el objetivo hacia la izquierda
-  }
-  if (Keyboard.state.get("KeyS")) {
-    cameraControl.target.z += cameraMoveSpeed; // Mueve el objetivo hacia abajo
-  }
-  if (Keyboard.state.get("KeyD")) {
-    cameraControl.target.x += cameraMoveSpeed; // Mueve el objetivo hacia la derecha
-  }
+
   if (Keyboard.state.get("Space")) {
     cameraControl.target.y += cameraMoveSpeed; // Mueve el objetivo hacia la derecha
   }
@@ -201,11 +241,27 @@ app.ticker.add(() => {
     cameraControl.target.y -= cameraMoveSpeed; // Mueve el objetivo hacia la derecha
   }
 
-  if (Keyboard.state.get("ArrowUp")){
-    model.z += 1
+  if (Keyboard.state.get("ArrowUp")) {
+    firstperson.rotationQuaternion.setEulerAngles(cameraControl.angles.x, cameraControl.angles.y, 0)
   }
-  if (Keyboard.state.get("ArrowDown")){
-    model.z -= 1
+  if (Keyboard.state.get("ArrowLeft")) {
+    cameraControl.angles.y += 2
+    myAngle = cameraControl.angles.y += 2
+  }
+  if (Keyboard.state.get("ArrowRight")) {
+    cameraControl.angles.y -= 2
+    myAngle = cameraControl.angles.y -= 2
+  }
+  if (Keyboard.state.get("ArrowDown")) {
+    firstperson.rotationQuaternion.setEulerAngles(cameraControl.angles.x, cameraControl.angles.y, 0)
   }
 
+  if (Keyboard.state.get("KeyR")) {
+    cameraControl.target.z += cameraMoveSpeed; // Mueve el objetivo hacia abajo
+    model.z += vehiculeSpeed
+  }
+  if (Keyboard.state.get("KeyF")) {
+    cameraControl.target.z -= cameraMoveSpeed; // Mueve el objetivo hacia abajo
+    model.z -= vehiculeSpeed
+  }
 });

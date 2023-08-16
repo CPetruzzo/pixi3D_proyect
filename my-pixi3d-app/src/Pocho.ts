@@ -1,5 +1,5 @@
 import { Texture, Resource } from "pixi.js";
-import { SpriteBillboardType, Vec3, Camera } from "pixi3d/*";
+import { SpriteBillboardType, Vec3, Camera, Point3D } from "pixi3d/*";
 import { Sprite3D } from "pixi3d/*";
 
 export class Pocho extends Sprite3D {
@@ -7,7 +7,7 @@ export class Pocho extends Sprite3D {
     speedX: number;
     speedY: number;
     speedZ: number;
-    constructor(texture: Texture<Resource> | undefined, areaSize: any) {
+    constructor(texture: Texture<Resource> | undefined, areaSize: number, scale?: Point3D) {
         super(texture);
 
         this.areaSize = areaSize;
